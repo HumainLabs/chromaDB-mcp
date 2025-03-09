@@ -21,6 +21,7 @@ A powerful Model Context Protocol (MCP) server implementation that provides seam
 
 ## 📋 Table of Contents
 - [Overview](#-overview)
+- [How ChromaDB Integration Works](#-how-chromadb-integration-works)
 - [Features](#-features)
 - [Requirements](#-requirements)
 - [Quick Start](#-quick-start)
@@ -49,6 +50,29 @@ The ChromaDB MCP Server bridges the gap between Language Models and vector datab
 - **Organize content in collections** for better document management
 
 MCP (Model Context Protocol) is an open protocol that standardizes how AI models interact with external tools and resources. This implementation focuses on document storage and retrieval powered by ChromaDB's vector database capabilities.
+
+## 🔌 How ChromaDB Integration Works
+
+This MCP server uses **ChromaDB in embedded mode**, which means:
+
+- **No Separate Service Required**: ChromaDB runs directly within the MCP server process
+- **File-Based Storage**: Data is stored as files in the configured data directory
+- **Single Process Deployment**: You only need to run the MCP server, ChromaDB is embedded
+- **Automatic Persistence**: Data is automatically persisted to disk between server restarts
+
+The data directory (configurable as described below) contains:
+- Vector embeddings of your documents
+- Metadata and content storage
+- Index structures for efficient similarity search
+- Collection information
+
+Behind the scenes, this implementation:
+1. Creates text embeddings using the Sentence Transformers library
+2. Stores these embeddings with metadata in ChromaDB collections
+3. Provides search capabilities using vector similarity
+4. Handles document versioning and collection management on top of ChromaDB's features
+
+> **Note**: While ChromaDB can also be run as a separate service, this implementation uses the embedded mode for simplicity and ease of deployment.
 
 ## ✨ Features
 
@@ -257,190 +281,108 @@ delete_collection({
 | `update_document` | Modify existing document | `document_id`, `content`, optional `metadata` | Success confirmation |
 | `delete_document` | Remove a document | `document_id` | Success confirmation |
 | `list_documents` | Get all documents | optional `limit`, `offset` | List of documents |
-| `bulk_create_documents` | Add multiple documents at once | `
+| `bulk_create_documents` | Add multiple documents at once | `documents` (array of document objects) | Success confirmation with count |
 
-## ⚙️ Configuration
+### Search Tools
 
-### Method 1: Claude Desktop Integration
+| Tool | Description | Parameters | Returns |
+|------|-------------|------------|---------|
+| `search_similar` | Find semantically similar documents | `query`, optional `num_results`, `metadata_filter`, `content_filter` | Ranked documents with similarity scores |
+| `hybrid_search` | Search with combined semantic and keyword matching | `query`, optional `keyword_weight` (0-1), `num_results`, `metadata_filter` | Ranked documents with relevance scores |
+| `multi_query_search` | Search with multiple queries | `queries` (array), optional `aggregation` ("union"/"intersection"), `num_results`, `metadata_filter` | Combined ranked results from all queries |
 
-Add the server configuration to your Claude Desktop config file:
+### Collection Management Tools
 
-**Windows**: `C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json`  
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+| Tool | Description | Parameters | Returns |
+|------|-------------|------------|---------|
+| `create_collection` | Create a new collection | `collection_name`, optional `description`, `metadata` | Success confirmation |
+| `list_collections` | List all collections | None | List of collections with descriptions |
+| `delete_collection` | Delete a collection | `collection_name` | Success confirmation |
 
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/MCP/server/community/chroma-mcp",
-        "run",
-        "chroma-mcp"
-      ]
-    }
-  }
-}
-```
+### Document Versioning Tools
 
-### Method 2: Cursor IDE Project Configuration
+| Tool | Description | Parameters | Returns |
+|------|-------------|------------|---------|
+| `create_document_version` | Create a new version of a document | `document_id`, `content`, optional `version_note`, `metadata` | Success confirmation with version number |
+| `list_document_versions` | List all versions of a document | `document_id` | Version history with timestamps and notes |
+| `get_document_version` | Retrieve a specific version of a document | `document_id`, `version` (number or "latest") | Document content and version metadata |
 
-For project-specific configuration in Cursor IDE, create a `.cursor/mcp.json` file in your project root:
+### Error Messages
 
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": []
-    }
-  }
-}
-```
+The server provides clear error messages for common scenarios:
+- `Document already exists [id=X]`
+- `Document not found [id=X]`
+- `Invalid input: Missing document_id or content`
+- `Invalid filter`
+- `Operation failed: [details]`
+- `Collection already exists [name=X]`
+- `Collection not found [name=X]`
+- `Version X not found for document 'Y'`
 
-If running with uv instead of installing:
+## 🛠️ Development
 
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/MCP/server/community/chroma-mcp",
-        "run",
-        "chroma-mcp"
-      ]
-    }
-  }
-}
-```
+### Interactive Testing
 
-### Storage Configuration
-
-By default, documents are stored in:
-- `src/chroma_mcp/data` directory
-- This location persists between server restarts
-
-### Customizing Data Storage Location
-
-You can customize where ChromaDB stores its data using any of these methods (in order of precedence):
-
-#### 1. Command-Line Argument
-
-When starting the server directly:
-```bash
-chroma-mcp --data-dir /path/to/your/data
-```
-
-When using uv:
-```bash
-uv run chroma-mcp --data-dir /path/to/your/data
-```
-
-#### 2. Environment Variable
-
-Set the `CHROMA_MCP_DATA_DIR` environment variable:
+The MCP Inspector provides a web interface for testing server functionality:
 
 ```bash
-# Linux/macOS
-export CHROMA_MCP_DATA_DIR=/path/to/your/data
-chroma-mcp
-
-# Windows
-set CHROMA_MCP_DATA_DIR=C:\path\to\your\data
-chroma-mcp
+npx @modelcontextprotocol/inspector chroma-mcp
 ```
 
-#### 3. Claude Desktop Configuration
-
-When configuring for Claude Desktop, you can pass the data directory as an argument:
-
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": ["--data-dir", "/path/to/your/data"]
-    }
-  }
-}
-```
-
-#### 4. Cursor IDE Configuration
-
-Similarly for Cursor IDE in your `.cursor/mcp.json` file:
-
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": ["--data-dir", "/path/to/your/data"]
-    }
-  }
-}
-```
-
-> **Tip**: For persistent data storage, choose a location outside your project directory, such as a dedicated data directory in your user home folder or another permanent location.# Customizing Data Storage Location
-
-You can customize where ChromaDB stores its data using any of these methods (in order of precedence):
-
-## 1. Command-Line Argument
-
-When starting the server directly:
-```bash
-chroma-mcp --data-dir /path/to/your/data
-```
-
-When using uv:
-```bash
-uv run chroma-mcp --data-dir /path/to/your/data
-```
-
-## 2. Environment Variable
-
-Set the `CHROMA_MCP_DATA_DIR` environment variable:
+For uv installations:
 
 ```bash
-# Linux/macOS
-export CHROMA_MCP_DATA_DIR=/path/to/your/data
-chroma-mcp
-
-# Windows
-set CHROMA_MCP_DATA_DIR=C:\path\to\your\data
-chroma-mcp
+npx @modelcontextprotocol/inspector uv --directory C:/PATH/TO/YOUR/PROJECT run chroma-mcp
 ```
 
-## 3. Claude Desktop Configuration
+### Building the Package
 
-When configuring for Claude Desktop, you can pass the data directory as an argument:
+```bash
+# Update dependencies
+uv compile pyproject.toml
 
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": ["--data-dir", "/path/to/your/data"]
-    }
-  }
-}
+# Build package
+uv build
 ```
 
-## 4. Cursor IDE Configuration
+## ❓ Troubleshooting
 
-Similarly for Cursor IDE in your `.cursor/mcp.json` file:
+### Common Issues
 
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": ["--data-dir", "/path/to/your/data"]
-    }
-  }
-}
-```
+**Issue**: Server fails to start  
+**Solution**: Check Python version (`python --version`), ensure 3.12+ is installed
 
-> **Tip**: For persistent data storage, choose a location outside your project directory, such as a dedicated data directory in your user home folder or another permanent location. 
+**Issue**: Document search returns unexpected results  
+**Solution**: Verify embedding model is loaded correctly; check query formatting
+
+**Issue**: Cannot connect from AI assistant  
+**Solution**: Verify MCP configuration in assistant settings, check server logs for connection attempts
+
+**Issue**: Document versions not appearing  
+**Solution**: Ensure you're using the correct document_id and check that versions were created successfully
+
+### Getting Help
+
+If you encounter issues not covered here:
+1. Check server logs for detailed error messages
+2. Open an issue on the GitHub repository
+3. Contact HumainLabs.ai support
+
+## 👥 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+- Code style and conventions
+- Testing requirements
+- Pull request process
+- Bug reporting
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <p>Maintained with ❤️ by <a href="https://humainlabs.ai">HumainLabs.ai</a></p>
+  <p>Built on <a href="https://github.com/chroma-core/chroma">ChromaDB</a> and <a href="https://modelcontextprotocol.ai">Model Context Protocol</a></p>
+</div> 
