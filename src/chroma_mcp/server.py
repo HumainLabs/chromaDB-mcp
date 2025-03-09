@@ -14,6 +14,7 @@ from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
 import functools
+import argparse
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -83,9 +84,15 @@ def retry_operation(operation_name: str):
         return wrapper
     return decorator
 
-# Initialize Chroma client with persistence
-data_dir = os.path.join(os.path.dirname(__file__), "data")
+# Parse command line arguments for data directory
+parser = argparse.ArgumentParser(description='ChromaDB MCP Server')
+parser.add_argument('--data-dir', type=str, help='Path to data directory')
+args, _ = parser.parse_known_args()
+
+# Priority: 1. Command line argument, 2. Environment variable, 3. Default location
+data_dir = args.data_dir or os.environ.get('CHROMA_MCP_DATA_DIR') or os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(data_dir, exist_ok=True)
+logger.info(f"Using data directory: {data_dir}")
 
 client = chromadb.Client(Settings(
     persist_directory=data_dir,

@@ -130,70 +130,6 @@ If you're upgrading from a previous version, the data directory has moved from `
 python migrate_data.py
 ```
 
-## ⚙️ Configuration
-
-### Method 1: Claude Desktop Integration
-
-Add the server configuration to your Claude Desktop config file:
-
-**Windows**: `C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json`  
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/MCP/server/community/chroma-mcp",
-        "run",
-        "chroma-mcp"
-      ]
-    }
-  }
-}
-```
-
-### Method 2: Cursor IDE Project Configuration
-
-For project-specific configuration in Cursor IDE, create a `.cursor/mcp.json` file in your project root:
-
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "chroma-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-If running with uv instead of installing:
-
-```json
-{
-  "mcpServers": {
-    "chroma": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "C:/MCP/server/community/chroma-mcp",
-        "run",
-        "chroma-mcp"
-      ]
-    }
-  }
-}
-```
-
-### Storage Configuration
-
-By default, documents are stored in:
-- `src/chroma_mcp/data` directory
-- This location persists between server restarts
-
 ## 🔄 Usage Examples
 
 ### Creating and Storing Documents
@@ -321,108 +257,190 @@ delete_collection({
 | `update_document` | Modify existing document | `document_id`, `content`, optional `metadata` | Success confirmation |
 | `delete_document` | Remove a document | `document_id` | Success confirmation |
 | `list_documents` | Get all documents | optional `limit`, `offset` | List of documents |
-| `bulk_create_documents` | Add multiple documents at once | `documents` (array of document objects) | Success confirmation with count |
+| `bulk_create_documents` | Add multiple documents at once | `
 
-### Search Tools
+## ⚙️ Configuration
 
-| Tool | Description | Parameters | Returns |
-|------|-------------|------------|---------|
-| `search_similar` | Find semantically similar documents | `query`, optional `num_results`, `metadata_filter`, `content_filter` | Ranked documents with similarity scores |
-| `hybrid_search` | Search with combined semantic and keyword matching | `query`, optional `keyword_weight` (0-1), `num_results`, `metadata_filter` | Ranked documents with relevance scores |
-| `multi_query_search` | Search with multiple queries | `queries` (array), optional `aggregation` ("union"/"intersection"), `num_results`, `metadata_filter` | Combined ranked results from all queries |
+### Method 1: Claude Desktop Integration
 
-### Collection Management Tools
+Add the server configuration to your Claude Desktop config file:
 
-| Tool | Description | Parameters | Returns |
-|------|-------------|------------|---------|
-| `create_collection` | Create a new collection | `collection_name`, optional `description`, `metadata` | Success confirmation |
-| `list_collections` | List all collections | None | List of collections with descriptions |
-| `delete_collection` | Delete a collection | `collection_name` | Success confirmation |
+**Windows**: `C:\Users\<username>\AppData\Roaming\Claude\claude_desktop_config.json`  
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-### Document Versioning Tools
-
-| Tool | Description | Parameters | Returns |
-|------|-------------|------------|---------|
-| `create_document_version` | Create a new version of a document | `document_id`, `content`, optional `version_note`, `metadata` | Success confirmation with version number |
-| `list_document_versions` | List all versions of a document | `document_id` | Version history with timestamps and notes |
-| `get_document_version` | Retrieve a specific version of a document | `document_id`, `version` (number or "latest") | Document content and version metadata |
-
-### Error Messages
-
-The server provides clear error messages for common scenarios:
-- `Document already exists [id=X]`
-- `Document not found [id=X]`
-- `Invalid input: Missing document_id or content`
-- `Invalid filter`
-- `Operation failed: [details]`
-- `Collection already exists [name=X]`
-- `Collection not found [name=X]`
-- `Version X not found for document 'Y'`
-
-## 🛠️ Development
-
-### Interactive Testing
-
-The MCP Inspector provides a web interface for testing server functionality:
-
-```bash
-npx @modelcontextprotocol/inspector chroma-mcp
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:/MCP/server/community/chroma-mcp",
+        "run",
+        "chroma-mcp"
+      ]
+    }
+  }
+}
 ```
 
-For uv installations:
+### Method 2: Cursor IDE Project Configuration
 
-```bash
-npx @modelcontextprotocol/inspector uv --directory C:/PATH/TO/YOUR/PROJECT run chroma-mcp
+For project-specific configuration in Cursor IDE, create a `.cursor/mcp.json` file in your project root:
+
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "chroma-mcp",
+      "args": []
+    }
+  }
+}
 ```
 
-### Building the Package
+If running with uv instead of installing:
 
-```bash
-# Update dependencies
-uv compile pyproject.toml
-
-# Build package
-uv build
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:/MCP/server/community/chroma-mcp",
+        "run",
+        "chroma-mcp"
+      ]
+    }
+  }
+}
 ```
 
-## ❓ Troubleshooting
+### Storage Configuration
 
-### Common Issues
+By default, documents are stored in:
+- `src/chroma_mcp/data` directory
+- This location persists between server restarts
 
-**Issue**: Server fails to start  
-**Solution**: Check Python version (`python --version`), ensure 3.12+ is installed
+### Customizing Data Storage Location
 
-**Issue**: Document search returns unexpected results  
-**Solution**: Verify embedding model is loaded correctly; check query formatting
+You can customize where ChromaDB stores its data using any of these methods (in order of precedence):
 
-**Issue**: Cannot connect from AI assistant  
-**Solution**: Verify MCP configuration in assistant settings, check server logs for connection attempts
+#### 1. Command-Line Argument
 
-**Issue**: Document versions not appearing  
-**Solution**: Ensure you're using the correct document_id and check that versions were created successfully
+When starting the server directly:
+```bash
+chroma-mcp --data-dir /path/to/your/data
+```
 
-### Getting Help
+When using uv:
+```bash
+uv run chroma-mcp --data-dir /path/to/your/data
+```
 
-If you encounter issues not covered here:
-1. Check server logs for detailed error messages
-2. Open an issue on the GitHub repository
-3. Contact HumainLabs.ai support
+#### 2. Environment Variable
 
-## 👥 Contributing
+Set the `CHROMA_MCP_DATA_DIR` environment variable:
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-- Code style and conventions
-- Testing requirements
-- Pull request process
-- Bug reporting
+```bash
+# Linux/macOS
+export CHROMA_MCP_DATA_DIR=/path/to/your/data
+chroma-mcp
 
-## 📄 License
+# Windows
+set CHROMA_MCP_DATA_DIR=C:\path\to\your\data
+chroma-mcp
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+#### 3. Claude Desktop Configuration
 
----
+When configuring for Claude Desktop, you can pass the data directory as an argument:
 
-<div align="center">
-  <p>Maintained with ❤️ by <a href="https://humainlabs.ai">HumainLabs.ai</a></p>
-  <p>Built on <a href="https://github.com/chroma-core/chroma">ChromaDB</a> and <a href="https://modelcontextprotocol.ai">Model Context Protocol</a></p>
-</div>
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "chroma-mcp",
+      "args": ["--data-dir", "/path/to/your/data"]
+    }
+  }
+}
+```
+
+#### 4. Cursor IDE Configuration
+
+Similarly for Cursor IDE in your `.cursor/mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "chroma-mcp",
+      "args": ["--data-dir", "/path/to/your/data"]
+    }
+  }
+}
+```
+
+> **Tip**: For persistent data storage, choose a location outside your project directory, such as a dedicated data directory in your user home folder or another permanent location.# Customizing Data Storage Location
+
+You can customize where ChromaDB stores its data using any of these methods (in order of precedence):
+
+## 1. Command-Line Argument
+
+When starting the server directly:
+```bash
+chroma-mcp --data-dir /path/to/your/data
+```
+
+When using uv:
+```bash
+uv run chroma-mcp --data-dir /path/to/your/data
+```
+
+## 2. Environment Variable
+
+Set the `CHROMA_MCP_DATA_DIR` environment variable:
+
+```bash
+# Linux/macOS
+export CHROMA_MCP_DATA_DIR=/path/to/your/data
+chroma-mcp
+
+# Windows
+set CHROMA_MCP_DATA_DIR=C:\path\to\your\data
+chroma-mcp
+```
+
+## 3. Claude Desktop Configuration
+
+When configuring for Claude Desktop, you can pass the data directory as an argument:
+
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "chroma-mcp",
+      "args": ["--data-dir", "/path/to/your/data"]
+    }
+  }
+}
+```
+
+## 4. Cursor IDE Configuration
+
+Similarly for Cursor IDE in your `.cursor/mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "chroma": {
+      "command": "chroma-mcp",
+      "args": ["--data-dir", "/path/to/your/data"]
+    }
+  }
+}
+```
+
+> **Tip**: For persistent data storage, choose a location outside your project directory, such as a dedicated data directory in your user home folder or another permanent location. 
